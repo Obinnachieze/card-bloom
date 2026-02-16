@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { Compass, Mail, LayoutGrid, Plus } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import CreateCardDrawer from '@/components/CreateCardDrawer';
 
 const BottomNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const tabs = [
     { icon: Compass, label: 'Explore', path: '/' },
@@ -30,7 +33,7 @@ const BottomNav = () => {
           );
         })}
         <button
-          onClick={() => navigate('/designer/new')}
+          onClick={() => setDrawerOpen(true)}
           className="flex flex-col items-center gap-0.5 px-4 py-1.5"
         >
           <div className="bg-primary text-primary-foreground rounded-full p-2 shadow-md">
@@ -38,6 +41,7 @@ const BottomNav = () => {
           </div>
         </button>
       </div>
+      <CreateCardDrawer open={drawerOpen} onOpenChange={setDrawerOpen} />
     </nav>
   );
 };

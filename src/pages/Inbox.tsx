@@ -8,7 +8,7 @@ const Inbox = () => {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <div className="px-5 pt-12 pb-6">
+      <div className="px-5 pt-12 pb-6 sm:px-8 lg:px-12 mx-auto max-w-7xl">
         <div className="flex items-center gap-2">
           <Mail size={24} className="text-primary" />
           <h1 className="text-2xl font-bold text-foreground">Inbox</h1>
@@ -16,7 +16,7 @@ const Inbox = () => {
         <p className="mt-1 text-sm text-muted-foreground">Cards you've received</p>
       </div>
 
-      <div className="px-4">
+      <div className="px-4 sm:px-8 lg:px-12">
         {receivedCards.length > 0 ? (
           <MasonryGrid cards={receivedCards} />
         ) : (

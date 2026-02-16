@@ -1,7 +1,14 @@
-import { Heart, MoreHorizontal, Share2 } from 'lucide-react';
+import { Bookmark, Heart, MoreHorizontal, Share2 } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CardData } from '@/data/mockCards';
+import { CardData, AspectRatio } from '@/data/mockCards';
+
+const aspectRatioMap: Record<AspectRatio, string> = {
+  portrait: '4/5',
+  landscape: '3/2',
+  square: '1/1',
+  tall: '2/3',
+};
 
 interface CardTileProps {
   card: CardData;
@@ -19,17 +26,33 @@ const CardTile = ({ card, linkTo }: CardTileProps) => {
       {/* Image container with hover overlay */}
       <div
         className="relative rounded-2xl overflow-hidden"
+        style={{ aspectRatio: aspectRatioMap[card.aspectRatio] }}
         onClick={() => navigate(linkTo || `/card/${card.id}`)}
       >
         <img
           src={card.image}
           alt={card.title}
-          className="w-full block"
+          className="w-full h-full object-cover"
           loading="lazy"
         />
 
-        {/* Hover overlay */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200">
+        {/* Mobile: always-visible bookmark button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setSaved(!saved);
+          }}
+          className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-colors md:hidden ${
+            saved
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-black/40 text-white'
+          }`}
+        >
+          <Bookmark size={16} fill={saved ? 'currentColor' : 'none'} />
+        </button>
+
+        {/* Desktop: hover overlay */}
+        <div className="hidden md:block absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200">
           {/* Save button - top right */}
           <button
             onClick={(e) => {
