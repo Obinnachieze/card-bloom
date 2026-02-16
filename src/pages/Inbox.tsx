@@ -16,7 +16,7 @@ const Inbox = () => {
         <p className="mt-1 text-sm text-muted-foreground">Cards you've received</p>
       </div>
 
-      <div className="px-3">
+      <div className="px-4">
         {receivedCards.length > 0 ? (
           <MasonryGrid cards={receivedCards} />
         ) : (

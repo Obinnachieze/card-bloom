@@ -31,7 +31,7 @@ const Explore = () => {
         </Button>
       </div>
 
-      <div className="px-3">
+      <div className="px-4">
         <MasonryGrid cards={mockCards} />
       </div>
 
