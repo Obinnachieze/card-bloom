@@ -177,13 +177,13 @@ function getTransitionStyle(
       };
     case 'flip-h':
       return {
-        animation: `${direction === 'enter' ? 'flipInH' : 'flipOutH'} 0.35s ${direction === 'exit' ? 'ease-in' : 'ease-out'} forwards`,
+        animation: `${direction === 'enter' ? (goingForward ? 'flipInHFwd' : 'flipInHBwd') : (goingForward ? 'flipOutHFwd' : 'flipOutHBwd')} 0.35s ${direction === 'exit' ? 'ease-in' : 'ease-out'} forwards`,
         backfaceVisibility: 'hidden',
         transformStyle: 'preserve-3d',
       };
     case 'flip-v':
       return {
-        animation: `${direction === 'enter' ? 'flipInV' : 'flipOutV'} 0.35s ${direction === 'exit' ? 'ease-in' : 'ease-out'} forwards`,
+        animation: `${direction === 'enter' ? (goingForward ? 'flipInVFwd' : 'flipInVBwd') : (goingForward ? 'flipOutVFwd' : 'flipOutVBwd')} 0.35s ${direction === 'exit' ? 'ease-in' : 'ease-out'} forwards`,
         backfaceVisibility: 'hidden',
         transformStyle: 'preserve-3d',
       };
@@ -218,23 +218,43 @@ const TRANSITION_KEYFRAMES = `
   to { transform: translateY(calc(-100% * var(--dir))); }
 }
 
-/* Horizontal card flip — rotates around vertical Y-axis through the card center */
-@keyframes flipOutH {
+/* Horizontal card flip forward — clockwise (left-to-right) */
+@keyframes flipOutHFwd {
+  0%   { transform: perspective(800px) rotateY(0deg) scale(1); }
+  100% { transform: perspective(800px) rotateY(-90deg) scale(0.92); }
+}
+@keyframes flipInHFwd {
+  0%   { transform: perspective(800px) rotateY(90deg) scale(0.92); }
+  100% { transform: perspective(800px) rotateY(0deg) scale(1); }
+}
+
+/* Horizontal card flip backward — counterclockwise (right-to-left) */
+@keyframes flipOutHBwd {
   0%   { transform: perspective(800px) rotateY(0deg) scale(1); }
   100% { transform: perspective(800px) rotateY(90deg) scale(0.92); }
 }
-@keyframes flipInH {
+@keyframes flipInHBwd {
   0%   { transform: perspective(800px) rotateY(-90deg) scale(0.92); }
   100% { transform: perspective(800px) rotateY(0deg) scale(1); }
 }
 
-/* Vertical card flip — rotates around horizontal X-axis through the card center */
-@keyframes flipOutV {
+/* Vertical card flip forward — top tilts away */
+@keyframes flipOutVFwd {
   0%   { transform: perspective(800px) rotateX(0deg) scale(1); }
   100% { transform: perspective(800px) rotateX(-90deg) scale(0.92); }
 }
-@keyframes flipInV {
+@keyframes flipInVFwd {
   0%   { transform: perspective(800px) rotateX(90deg) scale(0.92); }
+  100% { transform: perspective(800px) rotateX(0deg) scale(1); }
+}
+
+/* Vertical card flip backward — bottom tilts away (opposite direction) */
+@keyframes flipOutVBwd {
+  0%   { transform: perspective(800px) rotateX(0deg) scale(1); }
+  100% { transform: perspective(800px) rotateX(90deg) scale(0.92); }
+}
+@keyframes flipInVBwd {
+  0%   { transform: perspective(800px) rotateX(-90deg) scale(0.92); }
   100% { transform: perspective(800px) rotateX(0deg) scale(1); }
 }
 
