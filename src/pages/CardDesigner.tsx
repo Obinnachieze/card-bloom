@@ -164,33 +164,35 @@ function getTransitionStyle(
   direction: 'enter' | 'exit',
   goingForward: boolean,
 ): React.CSSProperties {
-  const dur = '0.5s';
   switch (transition) {
     case 'slide-h':
       return {
-        animation: `${direction === 'enter' ? 'slideInH' : 'slideOutH'} ${dur} ease forwards`,
+        animation: `${direction === 'enter' ? 'slideInH' : 'slideOutH'} 0.45s ease-in-out forwards`,
         ['--dir' as string]: goingForward ? '1' : '-1',
       };
     case 'slide-v':
       return {
-        animation: `${direction === 'enter' ? 'slideInV' : 'slideOutV'} ${dur} ease forwards`,
+        animation: `${direction === 'enter' ? 'slideInV' : 'slideOutV'} 0.45s ease-in-out forwards`,
         ['--dir' as string]: goingForward ? '1' : '-1',
       };
     case 'flip-h':
       return {
-        animation: `${direction === 'enter' ? 'flipInH' : 'flipOutH'} ${dur} ease forwards`,
+        animation: `${direction === 'enter' ? 'flipInH' : 'flipOutH'} 0.35s ${direction === 'exit' ? 'ease-in' : 'ease-out'} forwards`,
         backfaceVisibility: 'hidden',
+        transformStyle: 'preserve-3d',
       };
     case 'flip-v':
       return {
-        animation: `${direction === 'enter' ? 'flipInV' : 'flipOutV'} ${dur} ease forwards`,
+        animation: `${direction === 'enter' ? 'flipInV' : 'flipOutV'} 0.35s ${direction === 'exit' ? 'ease-in' : 'ease-out'} forwards`,
         backfaceVisibility: 'hidden',
+        transformStyle: 'preserve-3d',
       };
     case 'book':
       return {
-        animation: `${direction === 'enter' ? 'bookIn' : 'bookOut'} 0.6s ease forwards`,
+        animation: `${direction === 'enter' ? (goingForward ? 'bookInFwd' : 'bookInBwd') : (goingForward ? 'bookOutFwd' : 'bookOutBwd')} 0.5s ${direction === 'exit' ? 'ease-in' : 'ease-out'} forwards`,
         transformOrigin: goingForward ? 'left center' : 'right center',
         backfaceVisibility: 'hidden',
+        transformStyle: 'preserve-3d',
       };
     default:
       return {};
@@ -215,29 +217,45 @@ const TRANSITION_KEYFRAMES = `
   from { transform: translateY(0); }
   to { transform: translateY(calc(-100% * var(--dir))); }
 }
-@keyframes flipInH {
-  from { transform: rotateY(90deg); }
-  to { transform: rotateY(0deg); }
-}
+
+/* Horizontal card flip — rotates around vertical Y-axis through the card center */
 @keyframes flipOutH {
-  from { transform: rotateY(0deg); }
-  to { transform: rotateY(-90deg); }
+  0%   { transform: perspective(800px) rotateY(0deg) scale(1); }
+  100% { transform: perspective(800px) rotateY(90deg) scale(0.92); }
+}
+@keyframes flipInH {
+  0%   { transform: perspective(800px) rotateY(-90deg) scale(0.92); }
+  100% { transform: perspective(800px) rotateY(0deg) scale(1); }
+}
+
+/* Vertical card flip — rotates around horizontal X-axis through the card center */
+@keyframes flipOutV {
+  0%   { transform: perspective(800px) rotateX(0deg) scale(1); }
+  100% { transform: perspective(800px) rotateX(-90deg) scale(0.92); }
 }
 @keyframes flipInV {
-  from { transform: rotateX(-90deg); }
-  to { transform: rotateX(0deg); }
+  0%   { transform: perspective(800px) rotateX(90deg) scale(0.92); }
+  100% { transform: perspective(800px) rotateX(0deg) scale(1); }
 }
-@keyframes flipOutV {
-  from { transform: rotateX(0deg); }
-  to { transform: rotateX(90deg); }
+
+/* Book page flip going forward — page turns from right edge like a real book */
+@keyframes bookOutFwd {
+  0%   { transform: perspective(1200px) rotateY(0deg); }
+  100% { transform: perspective(1200px) rotateY(-180deg); }
 }
-@keyframes bookIn {
-  from { transform: perspective(1200px) rotateY(-90deg); }
-  to { transform: perspective(1200px) rotateY(0deg); }
+@keyframes bookInFwd {
+  0%   { transform: perspective(1200px) rotateY(180deg); }
+  100% { transform: perspective(1200px) rotateY(0deg); }
 }
-@keyframes bookOut {
-  from { transform: perspective(1200px) rotateY(0deg); }
-  to { transform: perspective(1200px) rotateY(90deg); }
+
+/* Book page flip going backward — page turns back from left edge */
+@keyframes bookOutBwd {
+  0%   { transform: perspective(1200px) rotateY(0deg); }
+  100% { transform: perspective(1200px) rotateY(180deg); }
+}
+@keyframes bookInBwd {
+  0%   { transform: perspective(1200px) rotateY(-180deg); }
+  100% { transform: perspective(1200px) rotateY(0deg); }
 }
 `;
 
@@ -275,7 +293,7 @@ const CardDesigner = () => {
   const [previewIndex, setPreviewIndex] = useState(0);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [transitionDir, setTransitionDir] = useState<'enter' | null>(null);
+  const [transitionDir, setTransitionDir] = useState<'exit' | 'enter' | null>(null);
   const [goingForward, setGoingForward] = useState(true);
 
   const selectedSize = CARD_SIZES[cardSize];
@@ -438,17 +456,26 @@ const CardDesigner = () => {
     const forward = newIndex > previewIndex;
     setGoingForward(forward);
     setIsTransitioning(true);
-    setTransitionDir('enter');
 
-    // Wait half the animation for exit, then swap
+    // Phase 1: Exit — animate old slide out
+    setTransitionDir('exit');
+
+    // Determine exit duration based on transition type
+    const exitMs = transition === 'book' ? 500 : transition.startsWith('flip') ? 350 : 450;
+    const enterMs = transition === 'book' ? 500 : transition.startsWith('flip') ? 350 : 450;
+
     setTimeout(() => {
+      // Swap to new slide
       setPreviewIndex(newIndex);
+      // Phase 2: Enter — animate new slide in
+      setTransitionDir('enter');
+
       setTimeout(() => {
         setIsTransitioning(false);
         setTransitionDir(null);
-      }, 500);
-    }, 10);
-  }, [isTransitioning, previewIndex, previewSlides.length]);
+      }, enterMs);
+    }, exitMs);
+  }, [isTransitioning, previewIndex, previewSlides.length, transition]);
 
   // --- Helpers ---
   const cx = selectedSize.width / 2;
@@ -924,7 +951,7 @@ const CardDesigner = () => {
 
       {/* Preview overlay */}
       {previewOpen && previewSlides.length > 0 && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center" style={{ perspective: '1200px' }}>
+        <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center">
           <button onClick={() => setPreviewOpen(false)} className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors z-10">
             <X size={28} />
           </button>
@@ -932,10 +959,10 @@ const CardDesigner = () => {
             Page {previewIndex + 1} of {previewSlides.length}
           </div>
 
-          {/* Slide container */}
-          <div className="relative max-w-[90vw] max-h-[80vh]" style={{ perspective: '1200px' }}>
+          {/* Slide container with 3D perspective */}
+          <div className="relative max-w-[90vw] max-h-[80vh]" style={{ perspective: '1200px', transformStyle: 'preserve-3d' }}>
             <img
-              key={previewIndex}
+              key={`${previewIndex}-${transitionDir}`}
               src={previewSlides[previewIndex]}
               alt={`Page ${previewIndex + 1}`}
               className="max-w-[90vw] max-h-[80vh] object-contain rounded-lg shadow-2xl"
