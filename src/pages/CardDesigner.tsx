@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, forwardRef } from 'react';
+import HTMLFlipBook from 'react-pageflip';
 import {
   Canvas as FabricCanvas,
   Rect,
@@ -187,13 +188,6 @@ function getTransitionStyle(
         backfaceVisibility: 'hidden',
         transformStyle: 'preserve-3d',
       };
-    case 'book':
-      return {
-        animation: `${direction === 'enter' ? (goingForward ? 'bookInFwd' : 'bookInBwd') : (goingForward ? 'bookOutFwd' : 'bookOutBwd')} 0.5s ${direction === 'exit' ? 'ease-in' : 'ease-out'} forwards`,
-        transformOrigin: goingForward ? 'left center' : 'right center',
-        backfaceVisibility: 'hidden',
-        transformStyle: 'preserve-3d',
-      };
     default:
       return {};
   }
@@ -258,26 +252,17 @@ const TRANSITION_KEYFRAMES = `
   100% { transform: perspective(800px) rotateX(0deg) scale(1); }
 }
 
-/* Book page flip going forward — page turns from right edge like a real book */
-@keyframes bookOutFwd {
-  0%   { transform: perspective(1200px) rotateY(0deg); }
-  100% { transform: perspective(1200px) rotateY(-180deg); }
-}
-@keyframes bookInFwd {
-  0%   { transform: perspective(1200px) rotateY(180deg); }
-  100% { transform: perspective(1200px) rotateY(0deg); }
-}
-
-/* Book page flip going backward — page turns back from left edge */
-@keyframes bookOutBwd {
-  0%   { transform: perspective(1200px) rotateY(0deg); }
-  100% { transform: perspective(1200px) rotateY(180deg); }
-}
-@keyframes bookInBwd {
-  0%   { transform: perspective(1200px) rotateY(-180deg); }
-  100% { transform: perspective(1200px) rotateY(0deg); }
-}
 `;
+
+// Page component for HTMLFlipBook (requires forwardRef)
+const FlipPage = forwardRef<HTMLDivElement, { src: string; pageNum: number }>(
+  ({ src, pageNum }, ref) => (
+    <div ref={ref} className="bg-white">
+      <img src={src} alt={`Page ${pageNum}`} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+    </div>
+  ),
+);
+FlipPage.displayName = 'FlipPage';
 
 // ============================================================
 
@@ -285,6 +270,8 @@ const CardDesigner = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fabricRef = useRef<FabricCanvas | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const flipBookRef = useRef<any>(null);
   const navigate = useNavigate();
   const { id } = useParams();
   const isMobile = useIsMobile();
@@ -481,8 +468,8 @@ const CardDesigner = () => {
     setTransitionDir('exit');
 
     // Determine exit duration based on transition type
-    const exitMs = transition === 'book' ? 500 : transition.startsWith('flip') ? 350 : 450;
-    const enterMs = transition === 'book' ? 500 : transition.startsWith('flip') ? 350 : 450;
+    const exitMs = transition.startsWith('flip') ? 350 : 450;
+    const enterMs = transition.startsWith('flip') ? 350 : 450;
 
     setTimeout(() => {
       // Swap to new slide
@@ -979,43 +966,120 @@ const CardDesigner = () => {
             Page {previewIndex + 1} of {previewSlides.length}
           </div>
 
-          {/* Slide container with 3D perspective */}
-          <div className="relative max-w-[90vw] max-h-[80vh]" style={{ perspective: '1200px', transformStyle: 'preserve-3d' }}>
-            <img
-              key={`${previewIndex}-${transitionDir}`}
-              src={previewSlides[previewIndex]}
-              alt={`Page ${previewIndex + 1}`}
-              className="max-w-[90vw] max-h-[80vh] object-contain rounded-lg shadow-2xl"
-              style={transitionDir ? getTransitionStyle(transition, transitionDir, goingForward) : undefined}
-            />
-          </div>
-
-          {previewSlides.length > 1 && (
+          {transition === 'book' ? (
+            /* Book mode — react-pageflip */
             <>
-              <button
-                onClick={() => navigatePreview(previewIndex - 1)}
-                disabled={previewIndex === 0 || isTransitioning}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 hover:text-white disabled:opacity-20 transition-colors"
-              >
-                <ChevronLeft size={36} />
-              </button>
-              <button
-                onClick={() => navigatePreview(previewIndex + 1)}
-                disabled={previewIndex === previewSlides.length - 1 || isTransitioning}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-white/60 hover:text-white disabled:opacity-20 transition-colors"
-              >
-                <ChevronRight size={36} />
-              </button>
-              <div className="flex gap-2 mt-6">
-                {previewSlides.map((_, i) => (
+              {(() => {
+                const maxW = Math.min(window.innerWidth * 0.85, 500);
+                const maxH = window.innerHeight * 0.75;
+                const aspect = selectedSize.width / selectedSize.height;
+                let w = maxW;
+                let h = w / aspect;
+                if (h > maxH) { h = maxH; w = h * aspect; }
+                return (
+                  <HTMLFlipBook
+                    ref={flipBookRef}
+                    width={Math.round(w)}
+                    height={Math.round(h)}
+                    size="fixed"
+                    minWidth={100}
+                    maxWidth={1000}
+                    minHeight={100}
+                    maxHeight={1000}
+                    drawShadow
+                    maxShadowOpacity={0.5}
+                    showCover={false}
+                    usePortrait
+                    startPage={0}
+                    flippingTime={800}
+                    useMouseEvents
+                    swipeDistance={30}
+                    showPageCorners
+                    mobileScrollSupport
+                    clickEventForward
+                    startZIndex={0}
+                    autoSize={false}
+                    disableFlipByClick={false}
+                    onFlip={(e) => setPreviewIndex(e.data)}
+                    className=""
+                    style={{}}
+                  >
+                    {previewSlides.map((src, i) => (
+                      <FlipPage key={i} src={src} pageNum={i + 1} />
+                    ))}
+                  </HTMLFlipBook>
+                );
+              })()}
+
+              {previewSlides.length > 1 && (
+                <>
                   <button
-                    key={i}
-                    onClick={() => navigatePreview(i)}
-                    disabled={isTransitioning}
-                    className={`w-2.5 h-2.5 rounded-full transition-all ${i === previewIndex ? 'bg-white scale-125' : 'bg-white/40'}`}
-                  />
-                ))}
+                    onClick={() => flipBookRef.current?.pageFlip()?.flipPrev()}
+                    disabled={previewIndex === 0}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 hover:text-white disabled:opacity-20 transition-colors"
+                  >
+                    <ChevronLeft size={36} />
+                  </button>
+                  <button
+                    onClick={() => flipBookRef.current?.pageFlip()?.flipNext()}
+                    disabled={previewIndex === previewSlides.length - 1}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/60 hover:text-white disabled:opacity-20 transition-colors"
+                  >
+                    <ChevronRight size={36} />
+                  </button>
+                  <div className="flex gap-2 mt-6">
+                    {previewSlides.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => flipBookRef.current?.pageFlip()?.flip(i)}
+                        className={`w-2.5 h-2.5 rounded-full transition-all ${i === previewIndex ? 'bg-white scale-125' : 'bg-white/40'}`}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            /* Other transitions — CSS-based */
+            <>
+              <div className="relative max-w-[90vw] max-h-[80vh]" style={{ perspective: '1200px', transformStyle: 'preserve-3d' }}>
+                <img
+                  key={`${previewIndex}-${transitionDir}`}
+                  src={previewSlides[previewIndex]}
+                  alt={`Page ${previewIndex + 1}`}
+                  className="max-w-[90vw] max-h-[80vh] object-contain rounded-lg shadow-2xl"
+                  style={transitionDir ? getTransitionStyle(transition, transitionDir, goingForward) : undefined}
+                />
               </div>
+
+              {previewSlides.length > 1 && (
+                <>
+                  <button
+                    onClick={() => navigatePreview(previewIndex - 1)}
+                    disabled={previewIndex === 0 || isTransitioning}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 hover:text-white disabled:opacity-20 transition-colors"
+                  >
+                    <ChevronLeft size={36} />
+                  </button>
+                  <button
+                    onClick={() => navigatePreview(previewIndex + 1)}
+                    disabled={previewIndex === previewSlides.length - 1 || isTransitioning}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/60 hover:text-white disabled:opacity-20 transition-colors"
+                  >
+                    <ChevronRight size={36} />
+                  </button>
+                  <div className="flex gap-2 mt-6">
+                    {previewSlides.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => navigatePreview(i)}
+                        disabled={isTransitioning}
+                        className={`w-2.5 h-2.5 rounded-full transition-all ${i === previewIndex ? 'bg-white scale-125' : 'bg-white/40'}`}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>
