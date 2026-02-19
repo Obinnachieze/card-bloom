@@ -318,7 +318,6 @@ const CardDesigner = () => {
   const [transitionDir, setTransitionDir] = useState<'exit' | 'enter' | null>(null);
   const [goingForward, setGoingForward] = useState(true);
   const [is3DCardOpen, setIs3DCardOpen] = useState(false)
-  const [is3DMode, setIs3DMode] = useState(false) // New state for inline 3D view;
 
   const selectedSize = CARD_SIZES[cardSize];
 
@@ -437,7 +436,9 @@ const CardDesigner = () => {
   }, [activePage, loadPage]);
 
   // --- Preview ---
-  const openPreview = useCallback(async () => {
+  // --- Preview ---
+  // Core function to generate preview slides
+  const generatePreviewSlides = useCallback(async () => {
     const canvas = fabricRef.current;
     if (!canvas) return;
     saveCurrentPage();
@@ -467,25 +468,22 @@ const CardDesigner = () => {
     canvas.setDimensions({ width: savedWidth, height: savedHeight });
     await loadPage(currentPages[activePageRef.current]);
 
-    // Ensure we have 4 slides for the 3D card (Front, InsideLeft, InsideRight, Back)
     while (slides.length < 4) {
-      slides.push(''); // Empty string or a default white placeholder will be handled by the component if needed, 
-      // but ideally we should generate a blank white image. 
-      // For now, let's reuse the last slide or a blank canvas if we want to be precise, 
-      // but simply pushing empty strings might break the image src.
-      // Let's generate a blank white slide.
       canvas.clear();
       canvas.backgroundColor = '#ffffff';
       slides.push(canvas.toDataURL({ format: 'png', multiplier: 2 }));
     }
-    // We only need the first 4 for the foldable card
     setPreviewSlides(slides.slice(0, 4));
-
     setPreviewIndex(0);
     setTransitionDir(null);
+  }, [saveCurrentPage, selectedSize, loadPage]);
+
+  // Renamed old openPreview to handlePreviewClick for clarity in top bar
+  const openPreview = useCallback(async () => {
+    await generatePreviewSlides();
     setIs3DCardOpen(false); // Start closed
     setPreviewOpen(true);
-  }, [saveCurrentPage, selectedSize, loadPage]);
+  }, [generatePreviewSlides]);
 
   const navigatePreview = useCallback((newIndex: number) => {
     if (isTransitioning || newIndex === previewIndex) return;
@@ -850,69 +848,11 @@ const CardDesigner = () => {
       {/* Canvas area */}
       <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden relative bg-gray-50/50">
 
-        {/* Main Content: 2D Canvas OR 3D Card */}
+        {/* Main Content: 2D Canvas */}
         <div className="relative flex items-center justify-center w-full h-full">
-          {is3DMode && (
-            <div className="animate-in fade-in zoom-in duration-300 absolute inset-0 z-10 flex items-center justify-center bg-gray-50/50">
-              <FoldableCard3D
-                frontImage={previewSlides[0]}
-                innerLeftImage={previewSlides[1]}
-                innerRightImage={previewSlides[2]}
-                backImage={previewSlides[3]}
-                isOpen={is3DCardOpen}
-                onToggle={() => setIs3DCardOpen(!is3DCardOpen)}
-                width={selectedSize.width * 0.6}
-                height={selectedSize.height * 0.6}
-              />
-            </div>
-          )}
-
-          <div className={`rounded-[3px] overflow-hidden shadow-2xl bg-white border border-gray-200 ${is3DMode ? 'opacity-0 pointer-events-none' : ''}`}>
+          <div className="rounded-[3px] overflow-hidden shadow-2xl bg-white border border-gray-200">
             <canvas ref={canvasRef} />
           </div>
-
-          {/* Toggle Button on the Interface */}
-          <div className="absolute bottom-8 z-50">
-            <Button
-              variant={is3DMode ? "default" : "secondary"}
-              size="lg"
-              className="shadow-xl rounded-full px-8 font-bold transition-all hover:scale-105 active:scale-95"
-              onClick={async () => {
-                if (!is3DMode) {
-                  // Generating preview before showing
-                  await openPreview();
-                  setIs3DCardOpen(false); // Start closed
-                  setIs3DMode(true);
-                } else {
-                  // If already in 3D, this button could toggle fold? 
-                  // User asked for "Open/Close" button.
-                  // Let's make THIS button the "Open/Close" button when in 3D?
-                  // Or separate?
-                  // User: "add the open button... text will change to close..."
-                  if (is3DCardOpen) {
-                    setIs3DCardOpen(false);
-                  } else {
-                    setIs3DCardOpen(true);
-                  }
-                }
-              }}
-            >
-              {is3DMode ? (is3DCardOpen ? "Close Card" : "Open Card") : "Preview 3D"}
-            </Button>
-
-            {is3DMode && (
-              <Button
-                variant="outline"
-                size="icon"
-                className="absolute left-full ml-4 rounded-full shadow-lg bg-white"
-                onClick={() => setIs3DMode(false)}
-                title="Back to Editing"
-              >
-                <X size={20} />
-              </Button>
-            )}
-          </div>
-
         </div>
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
       </div>
@@ -1149,6 +1089,36 @@ const CardDesigner = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 3D Preview Overlay */}
+      {previewOpen && previewSlides.length >= 4 && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in duration-200">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-4 right-4 text-white hover:bg-white/20 rounded-full h-12 w-12"
+            onClick={() => setPreviewOpen(false)}
+          >
+            <X size={32} />
+          </Button>
+
+          <div className="relative flex flex-col items-center">
+            <FoldableCard3D
+              frontImage={previewSlides[0]}
+              innerLeftImage={previewSlides[1]}
+              innerRightImage={previewSlides[2]}
+              backImage={previewSlides[3]}
+              isOpen={is3DCardOpen}
+              onToggle={() => setIs3DCardOpen(!is3DCardOpen)}
+              width={Math.min(window.innerWidth * 0.8, 400)}
+              height={Math.min(window.innerHeight * 0.8, 560)}
+            />
+            <p className="text-white/60 mt-8 text-lg font-medium animate-pulse">
+              Click card to {is3DCardOpen ? "close" : "open"}
+            </p>
+          </div>
+        </div>
+      )}
 
     </div >
   );

@@ -839,6 +839,9 @@ body{
 .ml-4{
   margin-left: 1rem;
 }
+.mt-8{
+  margin-top: 2rem;
+}
 .line-clamp-2{
   overflow: hidden;
   display: -webkit-box;
@@ -1050,6 +1053,9 @@ body{
 }
 .w-px{
   width: 1px;
+}
+.w-12{
+  width: 3rem;
 }
 .min-w-0{
   min-width: 0px;
@@ -2348,6 +2354,10 @@ body{
 
 .hover\:bg-white\/90:hover{
   background-color: rgb(255 255 255 / 0.9);
+}
+
+.hover\:bg-white\/20:hover{
+  background-color: rgb(255 255 255 / 0.2);
 }
 
 .hover\:text-accent-foreground:hover{

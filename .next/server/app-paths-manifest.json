@@ -1,7 +1,7 @@
 {
-  "/card/[id]/page": "app/card/[id]/page.js",
-  "/inbox/page": "app/inbox/page.js",
-  "/designer/[id]/page": "app/designer/[id]/page.js",
   "/page": "app/page.js",
-  "/dashboard/page": "app/dashboard/page.js"
+  "/inbox/page": "app/inbox/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/card/[id]/page": "app/card/[id]/page.js",
+  "/designer/[id]/page": "app/designer/[id]/page.js"
 }
