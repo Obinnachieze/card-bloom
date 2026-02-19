@@ -5,17 +5,7 @@ import cardLove from '@/assets/card-love.jpg';
 
 import { StaticImageData } from 'next/image';
 
-export type AspectRatio = 'portrait' | 'landscape' | 'square' | 'tall';
-
-export interface CardData {
-  id: string;
-  title: string;
-  creator: string;
-  image: string | StaticImageData;
-  likes: number;
-  category: string;
-  aspectRatio: AspectRatio;
-}
+import { CardData, AspectRatio } from '@/types';
 
 export const mockCards: CardData[] = [
   { id: '1', title: 'Happy Birthday!', creator: 'Alice', image: cardBirthday, likes: 42, category: 'Birthday', aspectRatio: 'portrait' },

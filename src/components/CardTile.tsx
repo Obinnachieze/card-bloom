@@ -3,7 +3,7 @@
 import { Bookmark, Heart, MoreHorizontal, Share2 } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CardData, AspectRatio } from '@/data/mockCards';
+import { CardData, AspectRatio } from '@/types';
 
 const aspectRatioMap: Record<AspectRatio, string> = {
   portrait: '4/5',

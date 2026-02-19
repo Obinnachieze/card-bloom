@@ -1,5 +1,5 @@
 import CardTile from './CardTile';
-import { CardData } from '@/data/mockCards';
+import { CardData } from '@/types';
 
 interface MasonryGridProps {
   cards: CardData[];

@@ -9,6 +9,9 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from '@/components/ui/drawer';
+import { Button } from '@/components/ui/button';
+import { useQuery } from '@tanstack/react-query';
+import { fetchCards } from '@/lib/api';
 import { mockCards } from '@/data/mockCards';
 
 interface CreateCardDrawerProps {
@@ -20,9 +23,17 @@ const CreateCardDrawer = ({ open, onOpenChange }: CreateCardDrawerProps) => {
   const router = useRouter();
   const [view, setView] = useState<'choice' | 'remix'>('choice');
 
+  const { data: cards } = useQuery({
+    queryKey: ['cards'],
+    queryFn: fetchCards,
+  });
+
   const handleOpenChange = (next: boolean) => {
     onOpenChange(next);
-    if (!next) setView('choice');
+    if (!next) {
+      // Reset view after a delay to avoid UI jumping during close animation
+      setTimeout(() => setView('choice'), 300);
+    }
   };
 
   const handleStartFresh = () => {
@@ -32,7 +43,7 @@ const CreateCardDrawer = ({ open, onOpenChange }: CreateCardDrawerProps) => {
 
   const handlePickRemix = (cardId: string) => {
     handleOpenChange(false);
-    router.push(`/designer/card/${cardId}`);
+    router.push(`/designer/remix-${cardId}`);
   };
 
   return (
@@ -76,6 +87,7 @@ const CreateCardDrawer = ({ open, onOpenChange }: CreateCardDrawerProps) => {
               <button
                 onClick={() => setView('choice')}
                 className="rounded-full p-1.5 hover:bg-muted transition-colors"
+                aria-label="Back to options"
               >
                 <ArrowLeft size={20} />
               </button>
@@ -83,18 +95,18 @@ const CreateCardDrawer = ({ open, onOpenChange }: CreateCardDrawerProps) => {
             </DrawerHeader>
             <div className="px-4 pb-6 overflow-y-auto max-h-[60vh]">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {mockCards.map((card) => (
+                {cards?.map((card) => (
                   <button
                     key={card.id}
                     onClick={() => handlePickRemix(card.id)}
-                    className="group relative overflow-hidden rounded-xl border border-border transition-shadow hover:shadow-md"
+                    className="group relative overflow-hidden rounded-xl border border-border transition-shadow hover:shadow-md aspect-[3/4]"
                   >
                     <img
                       src={typeof card.image === 'string' ? card.image : card.image.src}
                       alt={card.title}
-                      className="w-full aspect-[3/4] object-cover"
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
                     />
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2 text-left">
                       <p className="text-xs font-medium text-white truncate">{card.title}</p>
                     </div>
                   </button>

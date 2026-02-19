@@ -2,15 +2,30 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Heart, Shuffle, Share2 } from 'lucide-react';
-import { mockCards } from '@/data/mockCards';
 import { useState } from 'react';
+
+import { useQuery } from '@tanstack/react-query';
+import { fetchCardById } from '@/lib/api';
 
 const CardViewer = () => {
   const params = useParams();
   const id = params?.id as string;
   const router = useRouter();
-  const card = mockCards.find((c) => c.id === id);
   const [liked, setLiked] = useState(false);
+
+  const { data: card, isLoading } = useQuery({
+    queryKey: ['card', id],
+    queryFn: () => fetchCardById(id),
+    enabled: !!id,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">
+        Loading...
+      </div>
+    );
+  }
 
   if (!card) {
     return (

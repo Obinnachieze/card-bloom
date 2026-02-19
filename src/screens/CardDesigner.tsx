@@ -50,8 +50,23 @@ import {
   FlipVertical,
   ArrowRightLeft,
   ArrowUpDown,
+  Save,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
+import { createCard } from '@/lib/api';
+import { AspectRatio } from '@/types';
 import {
   Select,
   SelectContent,
@@ -289,6 +304,12 @@ const CardDesigner = () => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [brushSize, setBrushSize] = useState(4);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Save state
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [cardTitle, setCardTitle] = useState('Untitled Card');
+  const [cardCreator, setCardCreator] = useState('');
 
   // Multi-page state
   const [pages, setPages] = useState<PageData[]>([{ json: null }]);
@@ -545,6 +566,56 @@ const CardDesigner = () => {
     e.target.value = '';
   };
 
+  // --- Save ---
+  const handleSaveClick = () => {
+    setSaveOpen(true);
+  };
+
+  const mapSizeToAspectRatio = (sizeKey: string): AspectRatio => {
+    if (sizeKey.includes('landscape')) return 'landscape';
+    if (sizeKey.includes('square')) return 'square';
+    if (sizeKey.includes('story')) return 'tall';
+    return 'portrait';
+  };
+
+  const handleConfirmSave = async () => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    try {
+      setSaving(true);
+      // Ensure current page is saved to state
+      saveCurrentPage();
+
+      // Generate thumbnail from current view
+      // We might want to temporarily reset zoom to 1 to get a clean screenshot, 
+      // but usually toDataURL works on the current canvas state.
+      // Let's use a multiplier to get decent quality.
+      const dataUrl = canvas.toDataURL({ format: 'png', multiplier: 0.5 });
+
+      const newCard = {
+        title: cardTitle || 'Untitled Card',
+        creator: cardCreator || 'Anonymous',
+        image: dataUrl,
+        category: 'custom', // Default category
+        aspectRatio: mapSizeToAspectRatio(cardSize),
+      };
+
+      await createCard(newCard);
+
+      toast.success('Card saved successfully!');
+      setSaveOpen(false);
+
+      // Optional: Redirect to explore or viewer
+      // router.push('/'); 
+    } catch (error) {
+      console.error('Failed to save card:', error);
+      toast.error('Failed to save card. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // --- Shapes ---
   const addShape = (type: string) => {
     exitDrawingMode();
@@ -734,6 +805,25 @@ const CardDesigner = () => {
         >
           <Eye size={14} />
           {!isMobile && <span>Preview</span>}
+        </Button>
+
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 text-xs gap-1"
+          onClick={openPreview}
+        >
+          <Eye size={14} />
+          {!isMobile && <span>Preview</span>}
+        </Button>
+
+        <Button
+          size="sm"
+          className="h-8 text-xs gap-1 ml-2"
+          onClick={handleSaveClick}
+        >
+          <Save size={14} />
+          <span>Save</span>
         </Button>
       </div>
 
@@ -1084,7 +1174,50 @@ const CardDesigner = () => {
           )}
         </div>
       )}
-    </div>
+
+
+      {/* Save Dialog */}
+      <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Save your card</DialogTitle>
+            <DialogDescription>
+              Give your card a title and sign your name before sharing it with the world.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="title">Card Title</Label>
+              <Input
+                id="title"
+                value={cardTitle}
+                onChange={(e) => setCardTitle(e.target.value)}
+                placeholder="e.g., Happy Birthday Mom"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="creator">Creator Name</Label>
+              <Input
+                id="creator"
+                value={cardCreator}
+                onChange={(e) => setCardCreator(e.target.value)}
+                placeholder="Your name"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSaveOpen(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmSave} disabled={saving}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Card
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+    </div >
   );
 };
 
