@@ -1,5 +1,7 @@
+"use client";
+
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { PenLine, Shuffle, ArrowLeft } from 'lucide-react';
 import {
   Drawer,
@@ -15,7 +17,7 @@ interface CreateCardDrawerProps {
 }
 
 const CreateCardDrawer = ({ open, onOpenChange }: CreateCardDrawerProps) => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [view, setView] = useState<'choice' | 'remix'>('choice');
 
   const handleOpenChange = (next: boolean) => {
@@ -25,12 +27,12 @@ const CreateCardDrawer = ({ open, onOpenChange }: CreateCardDrawerProps) => {
 
   const handleStartFresh = () => {
     handleOpenChange(false);
-    navigate('/designer/new');
+    router.push('/designer/new');
   };
 
   const handlePickRemix = (cardId: string) => {
     handleOpenChange(false);
-    navigate(`/designer/remix-${cardId}`);
+    router.push(`/designer/card/${cardId}`);
   };
 
   return (
@@ -88,7 +90,7 @@ const CreateCardDrawer = ({ open, onOpenChange }: CreateCardDrawerProps) => {
                     className="group relative overflow-hidden rounded-xl border border-border transition-shadow hover:shadow-md"
                   >
                     <img
-                      src={card.image}
+                      src={typeof card.image === 'string' ? card.image : card.image.src}
                       alt={card.title}
                       className="w-full aspect-[3/4] object-cover"
                     />
