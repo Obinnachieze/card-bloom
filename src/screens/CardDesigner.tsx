@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback, forwardRef } from 'react';
-import HTMLFlipBook from 'react-pageflip';
+import FoldableCard3D from '@/components/FoldableCard3D';
 import {
   Canvas as FabricCanvas,
   Rect,
@@ -271,15 +271,7 @@ const TRANSITION_KEYFRAMES = `
 
 `;
 
-// Page component for HTMLFlipBook (requires forwardRef)
-const FlipPage = forwardRef<HTMLDivElement, { src: string; pageNum: number }>(
-  ({ src, pageNum }, ref) => (
-    <div ref={ref} className="bg-white">
-      <img src={src} alt={`Page ${pageNum}`} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-    </div>
-  ),
-);
-FlipPage.displayName = 'FlipPage';
+
 
 // ============================================================
 
@@ -289,9 +281,8 @@ const CardDesigner = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const flipBookRef = useRef<any>(null);
+  const { id } = useParams();
   const router = useRouter();
-  const params = useParams();
-  const id = params?.id as string;
   const isMobile = useIsMobile();
 
   const [activeColor, setActiveColor] = useState(COLORS[5]);
@@ -326,6 +317,8 @@ const CardDesigner = () => {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [transitionDir, setTransitionDir] = useState<'exit' | 'enter' | null>(null);
   const [goingForward, setGoingForward] = useState(true);
+  const [is3DCardOpen, setIs3DCardOpen] = useState(false)
+  const [is3DMode, setIs3DMode] = useState(false) // New state for inline 3D view;
 
   const selectedSize = CARD_SIZES[cardSize];
 
@@ -474,9 +467,23 @@ const CardDesigner = () => {
     canvas.setDimensions({ width: savedWidth, height: savedHeight });
     await loadPage(currentPages[activePageRef.current]);
 
-    setPreviewSlides(slides);
+    // Ensure we have 4 slides for the 3D card (Front, InsideLeft, InsideRight, Back)
+    while (slides.length < 4) {
+      slides.push(''); // Empty string or a default white placeholder will be handled by the component if needed, 
+      // but ideally we should generate a blank white image. 
+      // For now, let's reuse the last slide or a blank canvas if we want to be precise, 
+      // but simply pushing empty strings might break the image src.
+      // Let's generate a blank white slide.
+      canvas.clear();
+      canvas.backgroundColor = '#ffffff';
+      slides.push(canvas.toDataURL({ format: 'png', multiplier: 2 }));
+    }
+    // We only need the first 4 for the foldable card
+    setPreviewSlides(slides.slice(0, 4));
+
     setPreviewIndex(0);
     setTransitionDir(null);
+    setIs3DCardOpen(false); // Start closed
     setPreviewOpen(true);
   }, [saveCurrentPage, selectedSize, loadPage]);
 
@@ -807,15 +814,6 @@ const CardDesigner = () => {
           {!isMobile && <span>Preview</span>}
         </Button>
 
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 text-xs gap-1"
-          onClick={openPreview}
-        >
-          <Eye size={14} />
-          {!isMobile && <span>Preview</span>}
-        </Button>
 
         <Button
           size="sm"
@@ -850,9 +848,71 @@ const CardDesigner = () => {
       </div>
 
       {/* Canvas area */}
-      <div className="flex-1 flex items-center justify-center p-4 overflow-auto">
-        <div className="rounded-2xl overflow-hidden shadow-lg bg-card">
-          <canvas ref={canvasRef} />
+      <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden relative bg-gray-50/50">
+
+        {/* Main Content: 2D Canvas OR 3D Card */}
+        <div className="relative flex items-center justify-center w-full h-full">
+          {is3DMode && (
+            <div className="animate-in fade-in zoom-in duration-300 absolute inset-0 z-10 flex items-center justify-center bg-gray-50/50">
+              <FoldableCard3D
+                frontImage={previewSlides[0]}
+                innerLeftImage={previewSlides[1]}
+                innerRightImage={previewSlides[2]}
+                backImage={previewSlides[3]}
+                isOpen={is3DCardOpen}
+                onToggle={() => setIs3DCardOpen(!is3DCardOpen)}
+                width={selectedSize.width * 0.6}
+                height={selectedSize.height * 0.6}
+              />
+            </div>
+          )}
+
+          <div className={`rounded-[3px] overflow-hidden shadow-2xl bg-white border border-gray-200 ${is3DMode ? 'opacity-0 pointer-events-none' : ''}`}>
+            <canvas ref={canvasRef} />
+          </div>
+
+          {/* Toggle Button on the Interface */}
+          <div className="absolute bottom-8 z-50">
+            <Button
+              variant={is3DMode ? "default" : "secondary"}
+              size="lg"
+              className="shadow-xl rounded-full px-8 font-bold transition-all hover:scale-105 active:scale-95"
+              onClick={async () => {
+                if (!is3DMode) {
+                  // Generating preview before showing
+                  await openPreview();
+                  setIs3DCardOpen(false); // Start closed
+                  setIs3DMode(true);
+                } else {
+                  // If already in 3D, this button could toggle fold? 
+                  // User asked for "Open/Close" button.
+                  // Let's make THIS button the "Open/Close" button when in 3D?
+                  // Or separate?
+                  // User: "add the open button... text will change to close..."
+                  if (is3DCardOpen) {
+                    setIs3DCardOpen(false);
+                  } else {
+                    setIs3DCardOpen(true);
+                  }
+                }
+              }}
+            >
+              {is3DMode ? (is3DCardOpen ? "Close Card" : "Open Card") : "Preview 3D"}
+            </Button>
+
+            {is3DMode && (
+              <Button
+                variant="outline"
+                size="icon"
+                className="absolute left-full ml-4 rounded-full shadow-lg bg-white"
+                onClick={() => setIs3DMode(false)}
+                title="Back to Editing"
+              >
+                <X size={20} />
+              </Button>
+            )}
+          </div>
+
         </div>
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
       </div>
@@ -986,7 +1046,6 @@ const CardDesigner = () => {
           </SheetHeader>
 
           <div className="mt-6 space-y-8">
-            {/* Page size */}
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-foreground">Page Size</h3>
               <div className="grid grid-cols-2 gap-2">
@@ -1043,137 +1102,11 @@ const CardDesigner = () => {
               </div>
             </div>
           </div>
-        </SheetContent>
-      </Sheet>
+        </SheetContent >
+      </Sheet >
 
       {/* Preview overlay */}
-      {previewOpen && previewSlides.length > 0 && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center">
-          <button onClick={() => setPreviewOpen(false)} className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors z-10">
-            <X size={28} />
-          </button>
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 text-white/70 text-sm font-medium z-10">
-            Page {previewIndex + 1} of {previewSlides.length}
-          </div>
 
-          {transition === 'book' ? (
-            /* Book mode — react-pageflip */
-            <>
-              {(() => {
-                const maxW = Math.min(window.innerWidth * 0.85, 500);
-                const maxH = window.innerHeight * 0.75;
-                const aspect = selectedSize.width / selectedSize.height;
-                let w = maxW;
-                let h = w / aspect;
-                if (h > maxH) { h = maxH; w = h * aspect; }
-                return (
-                  <HTMLFlipBook
-                    ref={flipBookRef}
-                    width={Math.round(w)}
-                    height={Math.round(h)}
-                    size="fixed"
-                    minWidth={100}
-                    maxWidth={1000}
-                    minHeight={100}
-                    maxHeight={1000}
-                    drawShadow
-                    maxShadowOpacity={0.5}
-                    showCover={false}
-                    usePortrait
-                    startPage={0}
-                    flippingTime={800}
-                    useMouseEvents
-                    swipeDistance={30}
-                    showPageCorners
-                    mobileScrollSupport
-                    clickEventForward
-                    startZIndex={0}
-                    autoSize={false}
-                    disableFlipByClick={false}
-                    onFlip={(e) => setPreviewIndex(e.data)}
-                    className=""
-                    style={{}}
-                  >
-                    {previewSlides.map((src, i) => (
-                      <FlipPage key={i} src={src} pageNum={i + 1} />
-                    ))}
-                  </HTMLFlipBook>
-                );
-              })()}
-
-              {previewSlides.length > 1 && (
-                <>
-                  <button
-                    onClick={() => flipBookRef.current?.pageFlip()?.flipPrev()}
-                    disabled={previewIndex === 0}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 hover:text-white disabled:opacity-20 transition-colors"
-                  >
-                    <ChevronLeft size={36} />
-                  </button>
-                  <button
-                    onClick={() => flipBookRef.current?.pageFlip()?.flipNext()}
-                    disabled={previewIndex === previewSlides.length - 1}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/60 hover:text-white disabled:opacity-20 transition-colors"
-                  >
-                    <ChevronRight size={36} />
-                  </button>
-                  <div className="flex gap-2 mt-6">
-                    {previewSlides.map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => flipBookRef.current?.pageFlip()?.flip(i)}
-                        className={`w-2.5 h-2.5 rounded-full transition-all ${i === previewIndex ? 'bg-white scale-125' : 'bg-white/40'}`}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-            </>
-          ) : (
-            /* Other transitions — CSS-based */
-            <>
-              <div className="relative max-w-[90vw] max-h-[80vh]" style={{ perspective: '1200px', transformStyle: 'preserve-3d' }}>
-                <img
-                  key={`${previewIndex}-${transitionDir}`}
-                  src={previewSlides[previewIndex]}
-                  alt={`Page ${previewIndex + 1}`}
-                  className="max-w-[90vw] max-h-[80vh] object-contain rounded-lg shadow-2xl"
-                  style={transitionDir ? getTransitionStyle(transition, transitionDir, goingForward) : undefined}
-                />
-              </div>
-
-              {previewSlides.length > 1 && (
-                <>
-                  <button
-                    onClick={() => navigatePreview(previewIndex - 1)}
-                    disabled={previewIndex === 0 || isTransitioning}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 hover:text-white disabled:opacity-20 transition-colors"
-                  >
-                    <ChevronLeft size={36} />
-                  </button>
-                  <button
-                    onClick={() => navigatePreview(previewIndex + 1)}
-                    disabled={previewIndex === previewSlides.length - 1 || isTransitioning}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/60 hover:text-white disabled:opacity-20 transition-colors"
-                  >
-                    <ChevronRight size={36} />
-                  </button>
-                  <div className="flex gap-2 mt-6">
-                    {previewSlides.map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => navigatePreview(i)}
-                        disabled={isTransitioning}
-                        className={`w-2.5 h-2.5 rounded-full transition-all ${i === previewIndex ? 'bg-white scale-125' : 'bg-white/40'}`}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-            </>
-          )}
-        </div>
-      )}
 
 
       {/* Save Dialog */}
