@@ -5,7 +5,7 @@ import { CardData } from '@/types';
 export async function fetchCards(): Promise<CardData[]> {
     const { data, error } = await supabase
         .from('cards')
-        .select('*')
+        .select('*, aspectRatio:aspect_ratio')
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -18,7 +18,7 @@ export async function fetchCards(): Promise<CardData[]> {
 export async function fetchCardById(id: string): Promise<CardData | null> {
     const { data, error } = await supabase
         .from('cards')
-        .select('*')
+        .select('*, aspectRatio:aspect_ratio')
         .eq('id', id)
         .single();
 
@@ -31,9 +31,16 @@ export async function fetchCardById(id: string): Promise<CardData | null> {
 }
 
 export async function createCard(card: Omit<CardData, 'id' | 'likes' | 'created_at'>) {
+    const dbCard = {
+        ...card,
+        aspect_ratio: card.aspectRatio,
+    };
+    // Remove the camelCase version if present to avoid DB errors (though extra fields are usually ignored if strict is off, best to be safe)
+    delete (dbCard as any).aspectRatio;
+
     const { data, error } = await supabase
         .from('cards')
-        .insert([card])
+        .insert([dbCard])
         .select()
         .single();
 
