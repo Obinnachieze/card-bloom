@@ -1,16 +1,33 @@
 "use client";
 
-import { Bookmark, Heart, MoreHorizontal, Share2 } from 'lucide-react';
+import { Heart } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CardData, AspectRatio } from '@/types';
 
-const aspectRatioMap: Record<AspectRatio, string> = {
-  portrait: '4/5',
-  landscape: '3/2',
-  square: '1/1',
-  tall: '2/3',
+// Different height classes for masonry variety
+const aspectClasses: Record<AspectRatio, string> = {
+  portrait: 'aspect-[3/4]',
+  landscape: 'aspect-[4/3]',
+  square: 'aspect-square',
+  tall: 'aspect-[2/3]',
 };
+
+// Soft background colors for cards without images
+const cardColors = [
+  'bg-rose-50',
+  'bg-sky-50',
+  'bg-amber-50',
+  'bg-emerald-50',
+  'bg-violet-50',
+  'bg-pink-50',
+  'bg-cyan-50',
+  'bg-orange-50',
+  'bg-teal-50',
+  'bg-indigo-50',
+  'bg-lime-50',
+  'bg-fuchsia-50',
+];
 
 interface CardTileProps {
   card: CardData;
@@ -19,90 +36,65 @@ interface CardTileProps {
 
 const CardTile = ({ card, linkTo }: CardTileProps) => {
   const router = useRouter();
-  const [saved, setSaved] = useState(false);
+  const [liked, setLiked] = useState(false);
 
-  const initials = card.creator.slice(0, 1).toUpperCase();
+  const imageSrc = typeof card.image === 'string' ? card.image : card.image?.src;
+  const hasImage = imageSrc && imageSrc.length > 0;
+
+  // Deterministic color based on card id
+  const colorIndex = card.id ? card.id.charCodeAt(0) % cardColors.length : 0;
+  const bgColor = cardColors[colorIndex];
 
   return (
-    <div className="group cursor-pointer">
-      {/* Image container with hover overlay */}
+    <div className="group">
+      {/* Card */}
       <div
-        className="relative rounded-2xl overflow-hidden"
-        style={{ aspectRatio: aspectRatioMap[card.aspectRatio] }}
+        className={`relative ${aspectClasses[card.aspectRatio] || 'aspect-[3/4]'} w-full cursor-pointer rounded-lg overflow-hidden ${bgColor} shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5`}
         onClick={() => router.push(linkTo || `/card/${card.id}`)}
       >
-        <img
-          src={typeof card.image === 'string' ? card.image : card.image.src}
-          alt={card.title}
-          className="w-full h-full object-cover"
-          loading="lazy"
-        />
+        {hasImage ? (
+          <img
+            src={imageSrc}
+            alt={card.title}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          /* Decorative card face when no image */
+          <div className="w-full h-full flex flex-col items-center justify-center p-4">
+            <p className="text-base sm:text-lg font-semibold text-gray-700 text-center leading-snug line-clamp-3">
+              {card.title}
+            </p>
+            <p className="text-xs text-gray-400 mt-2">
+              {card.category}
+            </p>
+          </div>
+        )}
 
-        {/* Mobile: always-visible bookmark button */}
+        {/* Heart icon */}
         <button
           onClick={(e) => {
             e.stopPropagation();
-            setSaved(!saved);
+            setLiked(!liked);
           }}
-          className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-colors md:hidden ${saved
-            ? 'bg-primary text-primary-foreground'
-            : 'bg-black/40 text-white'
+          className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200
+            ${liked
+              ? 'bg-red-500 text-white opacity-100'
+              : 'bg-white/70 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-500'
             }`}
         >
-          <Bookmark size={16} fill={saved ? 'currentColor' : 'none'} />
+          <Heart size={13} fill={liked ? 'currentColor' : 'none'} />
         </button>
-
-        {/* Desktop: hover overlay */}
-        <div className="hidden md:block absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200">
-          {/* Save button - top right */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setSaved(!saved);
-            }}
-            className={`absolute top-2 right-2 px-4 py-2 rounded-full text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${saved
-              ? 'bg-black text-white'
-              : 'bg-primary text-primary-foreground'
-              }`}
-          >
-            {saved ? 'Saved' : 'Save'}
-          </button>
-
-          {/* Bottom action buttons */}
-          <div className="absolute bottom-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            <button
-              onClick={(e) => e.stopPropagation()}
-              className="w-8 h-8 rounded-full bg-white/90 hover:bg-white flex items-center justify-center transition-colors"
-            >
-              <Share2 size={14} className="text-gray-800" />
-            </button>
-            <button
-              onClick={(e) => e.stopPropagation()}
-              className="w-8 h-8 rounded-full bg-white/90 hover:bg-white flex items-center justify-center transition-colors"
-            >
-              <MoreHorizontal size={14} className="text-gray-800" />
-            </button>
-          </div>
-        </div>
       </div>
 
-      {/* Card info below image - Pinterest style */}
-      <div className="px-1 pt-2 pb-1">
-        <p className="text-sm font-semibold text-foreground leading-tight line-clamp-2">
+      {/* Card info */}
+      <div className="mt-2 px-0.5">
+        <p className="text-[13px] font-medium text-gray-800 leading-snug line-clamp-2">
           {card.title}
         </p>
-        <div className="flex items-center gap-2 mt-1.5">
-          <div className="w-6 h-6 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-xs font-bold shrink-0">
-            {initials}
-          </div>
-          <span className="text-xs text-muted-foreground truncate">
-            {card.creator}
-          </span>
-          <span className="flex items-center gap-0.5 text-xs text-muted-foreground ml-auto">
-            <Heart size={12} />
-            {card.likes}
-          </span>
-        </div>
+        <p className="text-[11px] text-gray-400 mt-0.5">
+          by {card.creator}
+        </p>
       </div>
     </div>
   );
