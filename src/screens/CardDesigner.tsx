@@ -15,6 +15,7 @@ import {
   Ellipse,
   Polyline,
   PencilBrush,
+  Gradient,
 } from 'fabric';
 import { useRouter, useParams } from 'next/navigation';
 import {
@@ -54,6 +55,7 @@ import {
   Loader2,
   Home,
   Redo2,
+  Palette,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -91,13 +93,20 @@ import {
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const COLORS = [
-  'hsl(10, 78%, 58%)',
-  'hsl(175, 42%, 42%)',
-  'hsl(43, 90%, 62%)',
-  'hsl(250, 60%, 60%)',
-  'hsl(330, 70%, 55%)',
-  'hsl(0, 0%, 0%)',
-  'hsl(0, 0%, 100%)',
+  'hsl(10, 78%, 58%)',  // Coral
+  'hsl(175, 42%, 42%)', // Teal
+  'hsl(43, 90%, 62%)',  // Mustard
+  'hsl(250, 60%, 60%)', // Lavender
+  'hsl(330, 70%, 55%)', // Pink
+  'hsl(142, 70%, 45%)', // Green
+  'hsl(210, 80%, 55%)', // Blue
+  'hsl(20, 90%, 50%)',  // Orange
+  'hsl(280, 70%, 50%)', // Purple
+  'hsl(350, 80%, 45%)', // Deep Red
+  'hsl(190, 90%, 40%)', // Ocean
+  'hsl(60, 80%, 40%)',  // Olive
+  'hsl(0, 0%, 0%)',     // Black
+  'hsl(0, 0%, 100%)',   // White
 ];
 
 const CARD_SIZES: Record<string, { width: number; height: number; label: string }> = {
@@ -297,6 +306,11 @@ const CardDesigner = () => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [brushSize, setBrushSize] = useState(4);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [colorsOpen, setColorsOpen] = useState(false);
+  const [colorMode, setColorMode] = useState<'solid' | 'gradient'>('solid');
+  const [gradientColor1, setGradientColor1] = useState(COLORS[0]);
+  const [gradientColor2, setGradientColor2] = useState(COLORS[4]);
+  const [gradientAngle, setGradientAngle] = useState(0);
 
   // Save state
   const [saveOpen, setSaveOpen] = useState(false);
@@ -937,22 +951,46 @@ const CardDesigner = () => {
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
       </div>
 
-      {/* Color picker */}
-      <div className="flex items-center justify-center gap-2.5 px-4 py-2 shrink-0">
-        {COLORS.map((color) => (
-          <button
-            key={color}
-            onClick={() => handleColorClick(color)}
-            className={`w-7 h-7 rounded-full border-2 transition-all ${activeColor === color ? 'border-foreground scale-110' : 'border-border'}`}
-            style={{ backgroundColor: color }}
-          />
-        ))}
-      </div>
-
       {/* Bottom toolbar */}
       <div className="flex items-center justify-around px-2 py-2 bg-card border-t border-border safe-area-bottom shrink-0">
         <ToolButton icon={<Type size={18} />} label="Text" onClick={addText} />
         <ToolButton icon={<ImageIcon size={18} />} label="Image" onClick={addImage} />
+
+        <Popover open={colorsOpen} onOpenChange={setColorsOpen}>
+          <PopoverTrigger asChild>
+            <button className="flex flex-col items-center gap-0.5 text-muted-foreground hover:text-foreground transition-colors px-2">
+              <div
+                className="w-4 h-4 rounded-full border border-border"
+                style={{ backgroundColor: activeColor }}
+              />
+              <span className="text-[10px] font-semibold">Colors</span>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-3" side="top">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold">Pick a Color</span>
+                <div
+                  className="w-4 h-4 rounded-full border border-border shadow-sm"
+                  style={{ backgroundColor: activeColor }}
+                />
+              </div>
+              <div className="grid grid-cols-7 gap-1.5">
+                {COLORS.map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => {
+                      handleColorClick(color);
+                      setColorsOpen(false);
+                    }}
+                    className={`w-7 h-7 rounded-full border-2 transition-all active:scale-95 ${activeColor === color ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
 
         <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
           <PopoverTrigger asChild>
@@ -1171,34 +1209,36 @@ const CardDesigner = () => {
       </Dialog>
 
       {/* 3D Preview Overlay */}
-      {previewOpen && previewSlides.length >= 4 && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in duration-200">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-4 right-4 text-white hover:bg-white/20 rounded-full h-12 w-12"
-            onClick={() => setPreviewOpen(false)}
-          >
-            <X size={32} />
-          </Button>
+      {
+        previewOpen && previewSlides.length >= 4 && (
+          <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in duration-200">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-4 right-4 text-white hover:bg-white/20 rounded-full h-12 w-12"
+              onClick={() => setPreviewOpen(false)}
+            >
+              <X size={32} />
+            </Button>
 
-          <div className="relative flex flex-col items-center">
-            <FoldableCard3D
-              frontImage={previewSlides[0]}
-              innerLeftImage={previewSlides[1]}
-              innerRightImage={previewSlides[2]}
-              backImage={previewSlides[3]}
-              isOpen={is3DCardOpen}
-              onToggle={() => setIs3DCardOpen(!is3DCardOpen)}
-              width={Math.min(window.innerWidth * 0.8, 400)}
-              height={Math.min(window.innerHeight * 0.8, 560)}
-            />
-            <p className="text-white/60 mt-8 text-lg font-medium animate-pulse">
-              Click card to {is3DCardOpen ? "close" : "open"}
-            </p>
+            <div className="relative flex flex-col items-center">
+              <FoldableCard3D
+                frontImage={previewSlides[0]}
+                innerLeftImage={previewSlides[1]}
+                innerRightImage={previewSlides[2]}
+                backImage={previewSlides[3]}
+                isOpen={is3DCardOpen}
+                onToggle={() => setIs3DCardOpen(!is3DCardOpen)}
+                width={Math.min(window.innerWidth * 0.8, 400)}
+                height={Math.min(window.innerHeight * 0.8, 560)}
+              />
+              <p className="text-white/60 mt-8 text-lg font-medium animate-pulse">
+                Click card to {is3DCardOpen ? "close" : "open"}
+              </p>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
     </div >
   );
