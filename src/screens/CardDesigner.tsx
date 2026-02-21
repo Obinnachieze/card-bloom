@@ -73,6 +73,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { createCard } from '@/lib/api';
 import { AspectRatio } from '@/types';
+import { EMOJI_CATEGORIES } from '@/data/emojis';
 import {
   Select,
   SelectContent,
@@ -891,66 +892,67 @@ const CardDesigner = () => {
       <style dangerouslySetInnerHTML={{ __html: TRANSITION_KEYFRAMES }} />
 
       {/* Top bar */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-card border-b border-border shrink-0">
+      <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 bg-card border-b border-border shrink-0">
         <Button
           variant="ghost"
           size="icon"
-          className="h-10 w-10 text-muted-foreground hover:text-foreground hover:bg-muted"
+          className="h-9 w-9 sm:h-10 sm:w-10 text-muted-foreground hover:text-foreground hover:bg-muted"
           onClick={() => router.push('/')}
         >
-          <Home size={24} />
+          <Home size={22} className="sm:w-6 sm:h-6" />
         </Button>
 
-        <div className="flex items-center gap-1 border-l border-border pl-2">
+        <div className="flex items-center gap-0.5 sm:gap-1 border-l border-border pl-1 sm:pl-2">
           <Button
             variant="ghost"
             size="icon"
-            className="h-10 w-10 text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30"
+            className="h-9 w-9 sm:h-10 sm:w-10 text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30"
             onClick={undo}
             disabled={history.length <= 1}
           >
-            <Undo2 size={24} />
+            <Undo2 size={22} className="sm:w-6 sm:h-6" />
           </Button>
 
           <Button
             variant="ghost"
             size="icon"
-            className="h-10 w-10 text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30"
+            className="h-9 w-9 sm:h-10 sm:w-10 text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30"
             onClick={redo}
             disabled={redoStack.length === 0}
           >
-            <Redo2 size={24} />
+            <Redo2 size={22} className="sm:w-6 sm:h-6" />
           </Button>
         </div>
         <div className="mr-auto" />
 
         <Button
-          size="sm"
-          variant="outline"
-          className="h-8 text-xs gap-1"
+          size="icon"
+          variant="ghost"
+          className="h-11 w-11 sm:h-10 sm:w-10 text-muted-foreground hover:text-foreground hover:bg-muted"
           onClick={openPreview}
+          title="Preview"
         >
-          <Eye size={14} />
-          {!isMobile && <span>Preview</span>}
+          <Eye size={28} className="sm:w-6 sm:h-6" />
         </Button>
 
         <Button
-          size="sm"
-          className="h-8 text-xs gap-1 ml-2"
+          size="icon"
+          variant="ghost"
+          className="h-11 w-11 sm:h-10 sm:w-10 text-muted-foreground hover:text-foreground hover:bg-muted"
           onClick={handleSaveClick}
+          title="Save"
         >
-          <Save size={14} />
-          <span>Save</span>
+          <Save size={28} className="sm:w-6 sm:h-6" />
         </Button>
 
         <Button
           variant="ghost"
           size="icon"
-          className="h-10 w-10 text-muted-foreground hover:text-foreground hover:bg-muted ml-1"
+          className="h-11 w-11 sm:h-10 sm:w-10 text-muted-foreground hover:text-foreground hover:bg-muted ml-1"
           onClick={() => setSettingsOpen(true)}
           title="Settings"
         >
-          <Settings size={24} />
+          <Settings size={28} className="sm:w-6 sm:h-6" />
         </Button>
       </div>
 
@@ -1100,11 +1102,7 @@ const CardDesigner = () => {
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-64 p-2" side="top">
-            <div className="grid grid-cols-8 gap-1">
-              {EMOJI_LIST.map((em) => (
-                <button key={em} onClick={() => addEmoji(em)} className="text-xl hover:bg-accent rounded p-1 text-center">{em}</button>
-              ))}
-            </div>
+            <AdvancedEmojiPicker onSelect={addEmoji} />
           </PopoverContent>
         </Popover>
 
@@ -1460,22 +1458,22 @@ function AdvancedColorPicker({ color, onChange }: { color: string; onChange: (co
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2.5">
       <ColorPickerArea h={hsv[0]} s={hsv[1]} v={hsv[2]} onChange={(s, v) => setHsv([hsv[0], s, v])} />
 
       <div className="flex items-center gap-3 px-1">
         <button
           onClick={handleEyedropper}
-          className="p-2 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground"
+          className="p-1.5 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground"
           title="Pick color from screen"
         >
-          <Pipette size={20} />
+          <Pipette size={18} />
         </button>
         <div className="flex-1">
           <HueSlider h={hsv[0]} onChange={(h) => setHsv([h, hsv[1], hsv[2]])} />
         </div>
         <div
-          className="w-8 h-8 rounded-full border border-border shadow-sm shrink-0"
+          className="w-6 h-6 rounded-full border border-border shadow-sm shrink-0"
           style={{ backgroundColor: rgbToHex(rgb[0], rgb[1], rgb[2]) }}
         />
       </div>
@@ -1496,6 +1494,59 @@ function AdvancedColorPicker({ color, onChange }: { color: string; onChange: (co
             </p>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function AdvancedEmojiPicker({ onSelect }: { onSelect: (emoji: string) => void }) {
+  const [search, setSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState(EMOJI_CATEGORIES[0].name);
+
+  const filteredEmojis = search
+    ? EMOJI_CATEGORIES.flatMap(c => c.emojis).filter(e => e.includes(search)) // Simple search for now
+    : EMOJI_CATEGORIES.find(c => c.name === activeCategory)?.emojis || [];
+
+  return (
+    <div className="space-y-3">
+      <div className="px-1">
+        <Input
+          placeholder="Search emojis..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="h-8 text-xs mb-2"
+        />
+        {!search && (
+          <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar">
+            {EMOJI_CATEGORIES.map(cat => (
+              <button
+                key={cat.name}
+                onClick={() => setActiveCategory(cat.name)}
+                className={`p-1.5 rounded-md transition-all shrink-0 ${activeCategory === cat.name ? 'bg-primary text-primary-foreground shadow-sm scale-105' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+                title={cat.name}
+              >
+                <span className="text-base leading-none">{cat.icon}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 h-32 overflow-y-auto px-1 custom-scrollbar">
+        {filteredEmojis.map((em, idx) => (
+          <button
+            key={`${em}-${idx}`}
+            onClick={() => onSelect(em)}
+            className="text-xl hover:bg-accent rounded aspect-square flex items-center justify-center transition-colors active:scale-90"
+          >
+            {em}
+          </button>
+        ))}
+        {filteredEmojis.length === 0 && (
+          <div className="col-span-7 py-8 text-center text-xs text-muted-foreground">
+            No emojis found
+          </div>
+        )}
       </div>
     </div>
   );
