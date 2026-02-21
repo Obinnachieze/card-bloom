@@ -52,6 +52,8 @@ import {
   ArrowUpDown,
   Save,
   Loader2,
+  Home,
+  Redo2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -319,6 +321,11 @@ const CardDesigner = () => {
   const [goingForward, setGoingForward] = useState(true);
   const [is3DCardOpen, setIs3DCardOpen] = useState(false)
 
+  // History state
+  const [history, setHistory] = useState<string[]>([]);
+  const [redoStack, setRedoStack] = useState<string[]>([]);
+  const [isUndoingRedoing, setIsUndoingRedoing] = useState(false);
+
   const selectedSize = CARD_SIZES[cardSize];
 
   const getCanvasScale = useCallback(() => {
@@ -357,6 +364,43 @@ const CardDesigner = () => {
     [],
   );
 
+  const saveHistory = useCallback(() => {
+    if (isUndoingRedoing || !fabricRef.current) return;
+    const json = JSON.stringify(fabricRef.current.toJSON(['data']));
+    setHistory((prev) => [...prev, json]);
+    setRedoStack([]); // Clear redo stack on new action
+  }, [isUndoingRedoing]);
+
+  const undo = useCallback(async () => {
+    if (history.length <= 1 || !fabricRef.current) return;
+    const canvas = fabricRef.current;
+    setIsUndoingRedoing(true);
+
+    const current = history[history.length - 1];
+    const previous = history[history.length - 2];
+
+    setRedoStack((prev) => [current, ...prev]);
+    setHistory((prev) => prev.slice(0, -1));
+
+    await canvas.loadFromJSON(JSON.parse(previous));
+    canvas.renderAll();
+    setIsUndoingRedoing(false);
+  }, [history, isUndoingRedoing]);
+
+  const redo = useCallback(async () => {
+    if (redoStack.length === 0 || !fabricRef.current) return;
+    const canvas = fabricRef.current;
+    setIsUndoingRedoing(true);
+
+    const next = redoStack[0];
+    setRedoStack((prev) => prev.slice(1));
+    setHistory((prev) => [...prev, next]);
+
+    await canvas.loadFromJSON(JSON.parse(next));
+    canvas.renderAll();
+    setIsUndoingRedoing(false);
+  }, [redoStack, isUndoingRedoing]);
+
   // Initialize canvas
   useEffect(() => {
     if (!canvasRef.current || fabricRef.current) return;
@@ -369,7 +413,19 @@ const CardDesigner = () => {
     });
     canvas.setZoom(scale);
     fabricRef.current = canvas;
+
+    // Initial history snapshot
+    setHistory([JSON.stringify(canvas.toJSON(['data']))]);
+
+    const handleObjectModified = () => saveHistory();
+    canvas.on('object:added', handleObjectModified);
+    canvas.on('object:modified', handleObjectModified);
+    canvas.on('object:removed', handleObjectModified);
+
     return () => {
+      canvas.off('object:added', handleObjectModified);
+      canvas.off('object:modified', handleObjectModified);
+      canvas.off('object:removed', handleObjectModified);
       canvas.dispose();
       fabricRef.current = null;
     };
@@ -785,12 +841,37 @@ const CardDesigner = () => {
 
       {/* Top bar */}
       <div className="flex items-center gap-2 px-3 py-2 bg-card border-b border-border shrink-0">
-        <button onClick={() => router.back()} className="text-foreground p-1">
-          <ArrowLeft size={20} />
-        </button>
-        <h2 className="font-bold text-foreground text-sm mr-auto">
-          {isNew ? 'Card Designer' : 'Edit Card'}
-        </h2>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 text-muted-foreground hover:text-foreground hover:bg-muted"
+          onClick={() => router.push('/')}
+        >
+          <Home size={24} />
+        </Button>
+
+        <div className="flex items-center gap-1 border-l border-border pl-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30"
+            onClick={undo}
+            disabled={history.length <= 1}
+          >
+            <Undo2 size={24} />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30"
+            onClick={redo}
+            disabled={redoStack.length === 0}
+          >
+            <Redo2 size={24} />
+          </Button>
+        </div>
+        <div className="mr-auto" />
 
         <Button
           size="sm"
