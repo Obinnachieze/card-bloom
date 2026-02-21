@@ -877,22 +877,11 @@ const CardDesigner = () => {
           size="sm"
           variant="outline"
           className="h-8 text-xs gap-1"
-          onClick={() => setSettingsOpen(true)}
-        >
-          <Settings size={14} />
-          {!isMobile && <span>Settings</span>}
-        </Button>
-
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 text-xs gap-1"
           onClick={openPreview}
         >
           <Eye size={14} />
           {!isMobile && <span>Preview</span>}
         </Button>
-
 
         <Button
           size="sm"
@@ -901,6 +890,16 @@ const CardDesigner = () => {
         >
           <Save size={14} />
           <span>Save</span>
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 text-muted-foreground hover:text-foreground hover:bg-muted ml-1"
+          onClick={() => setSettingsOpen(true)}
+          title="Settings"
+        >
+          <Settings size={24} />
         </Button>
       </div>
 
