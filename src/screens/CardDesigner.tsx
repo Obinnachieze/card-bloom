@@ -926,23 +926,23 @@ const CardDesigner = () => {
         <div className="mr-auto" />
 
         <Button
-          size="icon"
           variant="ghost"
-          className="h-11 w-11 sm:h-10 sm:w-10 text-muted-foreground hover:text-foreground hover:bg-muted"
+          className="h-11 w-11 sm:h-9 sm:w-auto sm:px-4 text-muted-foreground hover:text-foreground hover:bg-muted"
           onClick={openPreview}
           title="Preview"
         >
-          <Eye size={28} className="sm:w-6 sm:h-6" />
+          <Eye size={28} className="sm:w-5 sm:h-5" />
+          <span className="hidden sm:inline-block ml-2 font-medium">Preview</span>
         </Button>
 
         <Button
-          size="icon"
           variant="ghost"
-          className="h-11 w-11 sm:h-10 sm:w-10 text-muted-foreground hover:text-foreground hover:bg-muted"
+          className="h-11 w-11 sm:h-9 sm:w-auto sm:px-4 text-muted-foreground hover:text-foreground hover:bg-muted"
           onClick={handleSaveClick}
           title="Save"
         >
-          <Save size={28} className="sm:w-6 sm:h-6" />
+          <Save size={28} className="sm:w-5 sm:h-5" />
+          <span className="hidden sm:inline-block ml-2 font-medium">Save</span>
         </Button>
 
         <Button

@@ -1,6 +1,7 @@
 import Explore from "@/screens/Explore";
 import { Hero } from "@/components/Hero";
 import { Footer } from "@/components/ui/footer";
+import { FeatureStepsDemo } from "@/components/FeatureStepsDemo";
 import { Flower2, Github, Twitter, Instagram } from "lucide-react";
 
 export default function Page() {
@@ -9,6 +10,7 @@ export default function Page() {
             <div className="flex-1">
                 <Hero />
                 <Explore />
+                <FeatureStepsDemo />
             </div>
             <Footer
                 logo={<Flower2 className="h-8 w-8 text-pink-500" />}
